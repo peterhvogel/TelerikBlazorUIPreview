@@ -1,0 +1,72 @@
+﻿@page "/displaycustomers"
+@using Customers.Common
+@using Kendo.Blazor.Components.Grid
+
+<h1>List Customers</h1>
+ Status: @status <br />
+<KendoButton OnButtonClick='@GetCustomers'>Get Customers</KendoButton>
+<KendoButton Enable='@(status!="Ready")' OnButtonClick='@(() => { SaveCustomers(); })'>Save Customers</KendoButton>
+<KendoButton Enable='@(status!="Ready")' OnButtonClick='@(() => { Page(); })'>Page Forward</KendoButton>
+
+<KendoGrid ref="@grid" PageSize="5" TItem="Customer" Sortable=true>
+    <KendoGridColumns>
+        <KendoGridColumn Field="Id" Title="Customer Id" />
+        <KendoGridColumn Field="FirstName" Title="First Name" />
+        <KendoGridColumn Field="LastName" Title="Last Name" />
+    </KendoGridColumns>
+</KendoGrid>
+
+
+@functions {
+
+    private KendoGrid<Customer> grid { get; set; }
+    private string status = "Ready";
+    private IEnumerable<Customer> customers = null;
+
+    protected override void OnAfterRender()
+    {
+        GetCustomers();
+        grid.Data = customers;
+        grid.Pageable = true;
+        base.OnAfterRender();
+    }
+
+
+    public async void GetCustomers()
+    {
+        HttpClient hc = new HttpClient();
+        HttpResponseMessage rm = await hc.GetAsync("https://localhost:5001/customers");
+        customers = await rm.Content.ReadAsAsync<IEnumerable<Customer>>();
+        if (rm.IsSuccessStatusCode)
+        {
+            status = "Retrieved";
+        }
+        else
+        {
+            status = rm.StatusCode.ToString();
+        }
+        StateHasChanged();
+    }
+
+    public async void SaveCustomers()
+    {
+
+        HttpClient hc = new HttpClient();
+
+        HttpResponseMessage rm = await hc.PutAsJsonAsync("https://localhost:5001/customers", customers.First());
+        if (rm.IsSuccessStatusCode)
+        {
+            status = "Updated";
+        }
+        else
+        {
+            status = rm.StatusCode.ToString();
+        }
+        StateHasChanged();
+    }
+    private void Page()
+    {
+        grid.Page = 2;
+        StateHasChanged();
+    }
+}
