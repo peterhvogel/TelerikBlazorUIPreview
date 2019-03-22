@@ -3,34 +3,88 @@
 @using Kendo.Blazor.Components.Grid
 
 <h1>List Customers</h1>
- Status: @status <br />
-<KendoButton OnButtonClick='@GetCustomers'>Get Customers</KendoButton>
-<KendoButton Enable='@(status!="Ready")' OnButtonClick='@(() => { SaveCustomers(); })'>Save Customers</KendoButton>
-<KendoButton Enable='@(status!="Ready")' OnButtonClick='@(() => { Page(); })'>Page Forward</KendoButton>
 
-<KendoGrid ref="@grid" PageSize="5" TItem="Customer" Sortable=true>
+Page Size: <select bind="@pagingSize">
+    <option>All</option>
+    <option>5</option>
+    <option>10</option>
+</select>
+
+<KendoButton OnClick="@GetCustomers">Get Customers</KendoButton>
+<KendoButton Enabled='@(status == pageState.DataRetrieved)' OnClick='@(() => { SaveCustomers(); })'>Save Customers</KendoButton>
+<KendoButton Enabled='@(status == pageState.DataRetrieved)' OnClick='@(() => {
+                                                                           if (!fullView)
+                                                                           {
+                                                                               kgc = new KendoGridColumn();
+                                                                               kgc.Field = "FirstName";
+                                                                               kgc.Title = "First Name";
+                                                                               grid.AddColumn(kgc);
+                                                                           }
+                                                                           else
+                                                                           {
+                                                                               grid.RemoveColumn(kgc);
+                                                                           }
+
+                                                                           fullView = !fullView;
+
+                                                                           if (fullView)
+                                                                           {
+                                                                               viewButtonName = "Summary View";
+                                                                           }
+                                                                           else
+                                                                           {
+                                                                               viewButtonName = "Full View";
+                                                                           }
+                                                                       })'>@viewButtonName</KendoButton>
+
+<KendoButton Enabled='@(status == pageState.DataRetrieved)' OnClick='@(() => { SetPageSize(); })'>Set Page Size to All</KendoButton>
+
+<KendoGrid ref="@grid" Data="@customers" Pageable="@pageable" PageSize="@pageSize" Sortable="true">
     <KendoGridColumns>
         <KendoGridColumn Field="Id" Title="Customer Id" />
-        <KendoGridColumn Field="FirstName" Title="First Name" />
         <KendoGridColumn Field="LastName" Title="Last Name" />
     </KendoGridColumns>
 </KendoGrid>
 
+ Status: @status.ToString() <br />
 
 @functions {
-
-    private KendoGrid<Customer> grid { get; set; }
-    private string status = "Ready";
-    private IEnumerable<Customer> customers = null;
-
-    protected override void OnAfterRender()
+    private enum pageState
     {
-        GetCustomers();
-        grid.Data = customers;
-        grid.Pageable = true;
-        base.OnAfterRender();
+        NoDataRetrieved,
+        DataRetrieved
     }
 
+    private KendoGrid<Customer> grid { get; set; }
+    private pageState status = pageState.NoDataRetrieved;
+    private IEnumerable<Customer> customers = null;
+    private bool pageable;
+    private int pageSize;
+
+    private string viewButtonName = "Full View";
+    private bool fullView = false;
+
+    private string _pagingSize;
+    private string pagingSize
+    {
+        get
+        {
+            return _pagingSize;
+        }
+        set
+        {
+            _pagingSize = value;
+            if (value == "All")
+            {
+                pageable = false;
+            }
+            else
+            {
+                pageable = true;
+                pageSize = int.Parse(value);
+            }
+        }
+    }
 
     public async void GetCustomers()
     {
@@ -39,13 +93,19 @@
         customers = await rm.Content.ReadAsAsync<IEnumerable<Customer>>();
         if (rm.IsSuccessStatusCode)
         {
-            status = "Retrieved";
+            status = pageState.DataRetrieved;
         }
         else
         {
-            status = rm.StatusCode.ToString();
+            status = pageState.NoDataRetrieved;
         }
         StateHasChanged();
+    }
+
+    public void SetPageSize()
+    {
+        pagingSize = "All";
+        //StateHasChanged();
     }
 
     public async void SaveCustomers()
@@ -54,19 +114,39 @@
         HttpClient hc = new HttpClient();
 
         HttpResponseMessage rm = await hc.PutAsJsonAsync("https://localhost:5001/customers", customers.First());
-        if (rm.IsSuccessStatusCode)
+        //StateHasChanged();
+    }
+
+    KendoGridColumn kgc;
+    private void ExpandView()
+    {
+        if (!fullView)
         {
-            status = "Updated";
+            kgc = new KendoGridColumn();
+            kgc.Field = "FirstName";
+            kgc.Title = "FirstName";
+            grid.AddColumn(kgc);
+            fullView = true;
+            viewButtonName = "Summary View";
         }
         else
         {
-            status = rm.StatusCode.ToString();
+            grid.RemoveColumn(kgc);
+            fullView = false;
+            viewButtonName = "Full View";
         }
-        StateHasChanged();
     }
-    private void Page()
+
+    protected void ConfigurePaging(UIChangeEventArgs pagingEventArg)
     {
-        grid.Page = 2;
-        StateHasChanged();
+        if (pagingEventArg.Value.ToString() == "All")
+        {
+            pageable = false;
+        }
+        else
+        {
+            pageable = true;
+            pageSize = int.Parse(pagingEventArg.Value.ToString());
+        }
     }
 }
