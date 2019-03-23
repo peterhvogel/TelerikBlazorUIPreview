@@ -4,15 +4,20 @@
 
 <h1>List Customers</h1>
 
-Page Size: <select bind="@pagingSize">
-    <option>All</option>
-    <option>5</option>
-    <option>10</option>
-</select>
-
-<KendoButton OnClick="@GetCustomers">Get Customers</KendoButton>
-<KendoButton Enabled='@(status == pageState.DataRetrieved)' OnClick='@(() => { SaveCustomers(); })'>Save Customers</KendoButton>
-<KendoButton Enabled='@(status == pageState.DataRetrieved)' OnClick='@(() => {
+<div style="float:left; clear:both;">
+    Page Size: <select bind="@pagingSize">
+        <option>All</option>
+        <option>5</option>
+        <option>10</option>
+    </select>
+</div>
+<br />
+<br />
+<div style="float:left; clear:both;">
+    <KendoButton OnClick="@GetCustomers">Get Customers</KendoButton>
+    <KendoButton Enabled='@(status == pageState.DataRetrieved)' OnClick='@(() => { SaveCustomers(); })'>Save Customers</KendoButton>
+    <KendoButton Enabled='@(status == pageState.DataRetrieved)' OnClick='@(() => { SetPageSize(); })'>Set Page Size to All</KendoButton>
+    <KendoButton Enabled='@(status == pageState.DataRetrieved)' OnClick='@(() => {
                                                                            if (!fullView)
                                                                            {
                                                                                kgc = new KendoGridColumn();
@@ -37,116 +42,121 @@ Page Size: <select bind="@pagingSize">
                                                                            }
                                                                        })'>@viewButtonName</KendoButton>
 
-<KendoButton Enabled='@(status == pageState.DataRetrieved)' OnClick='@(() => { SetPageSize(); })'>Set Page Size to All</KendoButton>
-
-<KendoGrid ref="@grid" Data="@customers" Pageable="@pageable" PageSize="@pageSize" Sortable="true">
-    <KendoGridColumns>
-        <KendoGridColumn Field="Id" Title="Customer Id" />
-        <KendoGridColumn Field="LastName" Title="Last Name" />
-    </KendoGridColumns>
-</KendoGrid>
-
+ </div>
+<br />
+<br />
+<div style="float:left; clear:both;">
+  <KendoGrid ref="@grid" Data="@customers" Pageable="@pageable" PageSize="@pageSize" Sortable="true">
+        <KendoGridColumns>
+            <KendoGridColumn Field="Id" Title="Customer Id" />
+            <KendoGridColumn Field="LastName" Title="Last Name" />
+        </KendoGridColumns>
+   </KendoGrid>
+ </div>
+ <br />
+ <br />
+ <div style="float:left; clear:both;">
  Status: @status.ToString() <br />
+ </div>
 
-@functions {
-    private enum pageState
-    {
-        NoDataRetrieved,
-        DataRetrieved
-    }
+     @functions {
+         private enum pageState
+         {
+             NoDataRetrieved,
+             DataRetrieved
+         }
 
-    private KendoGrid<Customer> grid { get; set; }
-    private pageState status = pageState.NoDataRetrieved;
-    private IEnumerable<Customer> customers = null;
-    private bool pageable;
-    private int pageSize;
+         private KendoGrid<Customer> grid { get; set; }
+         private pageState status = pageState.NoDataRetrieved;
+         private IEnumerable<Customer> customers = null;
+         private bool pageable;
+         private int pageSize;
 
-    private string viewButtonName = "Full View";
-    private bool fullView = false;
+         private string viewButtonName = "Full View";
+         private bool fullView = false;
 
-    private string _pagingSize;
-    private string pagingSize
-    {
-        get
-        {
-            return _pagingSize;
-        }
-        set
-        {
-            _pagingSize = value;
-            if (value == "All")
-            {
-                pageable = false;
-            }
-            else
-            {
-                pageable = true;
-                pageSize = int.Parse(value);
-            }
-        }
-    }
+         private string _pagingSize;
+         private string pagingSize
+         {
+             get
+             {
+                 return _pagingSize;
+             }
+             set
+             {
+                 _pagingSize = value;
+                 if (value == "All")
+                 {
+                     pageable = false;
+                 }
+                 else
+                 {
+                     pageable = true;
+                     pageSize = int.Parse(value);
+                 }
+             }
+         }
 
-    public async void GetCustomers()
-    {
-        HttpClient hc = new HttpClient();
-        HttpResponseMessage rm = await hc.GetAsync("https://localhost:5001/customers");
-        customers = await rm.Content.ReadAsAsync<IEnumerable<Customer>>();
-        if (rm.IsSuccessStatusCode)
-        {
-            status = pageState.DataRetrieved;
-        }
-        else
-        {
-            status = pageState.NoDataRetrieved;
-        }
-        StateHasChanged();
-    }
+         public async void GetCustomers()
+         {
+             HttpClient hc = new HttpClient();
+             HttpResponseMessage rm = await hc.GetAsync("https://localhost:5001/customers");
+             customers = await rm.Content.ReadAsAsync<IEnumerable<Customer>>();
+             if (rm.IsSuccessStatusCode)
+             {
+                 status = pageState.DataRetrieved;
+             }
+             else
+             {
+                 status = pageState.NoDataRetrieved;
+             }
+             StateHasChanged();
+         }
 
-    public void SetPageSize()
-    {
-        pagingSize = "All";
-        //StateHasChanged();
-    }
+         public void SetPageSize()
+         {
+             pagingSize = "All";
+         }
 
-    public async void SaveCustomers()
-    {
+         public async void SaveCustomers()
+         {
 
-        HttpClient hc = new HttpClient();
+             HttpClient hc = new HttpClient();
 
-        HttpResponseMessage rm = await hc.PutAsJsonAsync("https://localhost:5001/customers", customers.First());
-        //StateHasChanged();
-    }
+             HttpResponseMessage rm = await hc.PutAsJsonAsync("https://localhost:5001/customers", customers.First());
+             //StateHasChanged();
+         }
 
-    KendoGridColumn kgc;
-    private void ExpandView()
-    {
-        if (!fullView)
-        {
-            kgc = new KendoGridColumn();
-            kgc.Field = "FirstName";
-            kgc.Title = "FirstName";
-            grid.AddColumn(kgc);
-            fullView = true;
-            viewButtonName = "Summary View";
-        }
-        else
-        {
-            grid.RemoveColumn(kgc);
-            fullView = false;
-            viewButtonName = "Full View";
-        }
-    }
+         KendoGridColumn kgc;
+         private void ExpandView()
+         {
+             if (!fullView)
+             {
+                 kgc = new KendoGridColumn();
+                 kgc.Field = "FirstName";
+                 kgc.Title = "FirstName";
+                 grid.AddColumn(kgc);
+                 fullView = true;
+                 viewButtonName = "Summary View";
+             }
+             else
+             {
+                 grid.RemoveColumn(kgc);
+                 fullView = false;
+                 viewButtonName = "Full View";
+             }
+         }
 
-    protected void ConfigurePaging(UIChangeEventArgs pagingEventArg)
-    {
-        if (pagingEventArg.Value.ToString() == "All")
-        {
-            pageable = false;
-        }
-        else
-        {
-            pageable = true;
-            pageSize = int.Parse(pagingEventArg.Value.ToString());
-        }
-    }
-}
+         protected void ConfigurePaging(UIChangeEventArgs pagingEventArg)
+         {
+             if (pagingEventArg.Value.ToString() == "All")
+             {
+                 pageable = false;
+             }
+             else
+             {
+                 pageable = true;
+                 pageSize = int.Parse(pagingEventArg.Value.ToString());
+             }
+         }
+     }
